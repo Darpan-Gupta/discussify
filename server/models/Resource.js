@@ -28,6 +28,11 @@ const resourceSchema = new mongoose.Schema({
         ref: 'Community',
         required: false
     },
+    discussion: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Discussion',
+        required: false
+    },
     description: {
         type: String,
         trim: true,
@@ -44,6 +49,7 @@ const resourceSchema = new mongoose.Schema({
 // Index for better query performance
 resourceSchema.index({ author: 1 });
 resourceSchema.index({ community: 1 });
+resourceSchema.index({ discussion: 1 });
 resourceSchema.index({ type: 1 });
 
 module.exports = mongoose.model('Resource', resourceSchema);

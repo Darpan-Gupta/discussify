@@ -1,222 +1,410 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { Container, Card, Button, Form, Badge, Spinner, Alert, Row, Col } from 'react-bootstrap'
 import { format } from 'date-fns'
-import { discussionsAPI } from '../services/api'
+import { discussionsAPI, resourcesAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import toast from 'react-hot-toast'
+import { useNotifications } from '../contexts/NotificationContext'
 
 const DiscussionDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
     const { user } = useAuth()
-    const queryClient = useQueryClient()
+    const { refreshNotifications } = useNotifications()
     const [comment, setComment] = useState('')
+    const [showResourceForm, setShowResourceForm] = useState(false)
+    const [resourceForm, setResourceForm] = useState({
+        title: '',
+        type: 'link',
+        link: '',
+        description: '',
+    })
+    const [isLoading, setIsLoading] = useState(false)
+    const [isSubmittingResource, setIsSubmittingResource] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [discussionData, setDiscussionData] = useState<any | null>(null)
+    const [resources, setResources] = useState<any[]>([])
+    const commentsEndRef = useRef<HTMLDivElement>(null)
+    const chatContainerRef = useRef<HTMLDivElement>(null)
 
-    const { data: discussion, isLoading, error } = useQuery(
-        ['discussion', id],
-        () => discussionsAPI.getById(id!),
-        {
-            enabled: !!id,
+    const scrollToBottom = () => {
+        commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+
+    useEffect(() => {
+        let isMounted = true
+        const fetchDiscussion = async () => {
+            if (!id) return
+            try {
+                setIsLoading(true)
+                setError(null)
+                const res = await discussionsAPI.getById(id)
+                if (isMounted) {
+                    setDiscussionData(res.data)
+                    // Scroll to bottom after data loads
+                    setTimeout(() => scrollToBottom(), 100)
+                }
+            } catch (e) {
+                if (isMounted) setError('Error loading discussion. Please try again later.')
+            } finally {
+                if (isMounted) setIsLoading(false)
+            }
         }
-    )
+        fetchDiscussion()
+        return () => { isMounted = false }
+    }, [id])
 
-    const addCommentMutation = useMutation(
-        (content: string) => discussionsAPI.addComment(id!, content),
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries(['discussion', id])
-                setComment('')
-                toast.success('Comment added successfully')
-            },
-            onError: (error: any) => {
-                toast.error(error.response?.data?.message || 'Failed to add comment')
-            },
+    useEffect(() => {
+        const fetchResources = async () => {
+            if (!id) return
+            try {
+                const res = await resourcesAPI.getAll({ discussionId: id })
+                setResources(res.data.resources || [])
+            } catch (err) {
+                console.error('Error loading resources:', err)
+            }
         }
-    )
-
-    const deleteCommentMutation = useMutation(
-        (commentId: string) => discussionsAPI.deleteComment(id!, commentId),
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries(['discussion', id])
-                toast.success('Comment deleted successfully')
-            },
-            onError: (error: any) => {
-                toast.error(error.response?.data?.message || 'Failed to delete comment')
-            },
+        if (discussionData) {
+            fetchResources()
         }
-    )
+    }, [id, discussionData])
 
-    const handleAddComment = (e: React.FormEvent) => {
+    // Scroll to bottom when comments or resources change
+    useEffect(() => {
+        if (discussionData?.comments || resources.length > 0) {
+            setTimeout(() => scrollToBottom(), 100)
+        }
+    }, [discussionData?.comments, resources])
+
+    const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (comment.trim()) {
-            addCommentMutation.mutate(comment.trim())
+        if (!id || !comment.trim()) return
+        try {
+            setIsLoading(true)
+            await discussionsAPI.participate(id, comment.trim())
+            setComment('')
+            // Refresh
+            const res = await discussionsAPI.getById(id)
+            setDiscussionData(res.data)
+            // Scroll to bottom after adding comment
+            setTimeout(() => scrollToBottom(), 100)
+            refreshNotifications()
+
+        } catch (err: any) {
+            window.alert(err.response?.data?.message || 'Failed to add comment')
+        } finally {
+            setIsLoading(false)
         }
     }
 
-    const handleDeleteComment = (commentId: string) => {
-        if (window.confirm('Are you sure you want to delete this comment?')) {
-            deleteCommentMutation.mutate(commentId)
+    const handleShareResource = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!id || !resourceForm.title.trim() || !resourceForm.link.trim()) return
+
+        try {
+            setIsSubmittingResource(true)
+            await resourcesAPI.create({
+                ...resourceForm,
+                discussionId: id,
+                communityId: discussionData?.community?._id || discussionData?.community,
+            })
+            window.alert('Resource shared successfully!')
+            setResourceForm({ title: '', type: 'link', link: '', description: '' })
+            setShowResourceForm(false)
+
+            // Refresh resources
+            const res = await resourcesAPI.getAll({ discussionId: id })
+            setResources(res.data.resources || [])
+
+            // Refresh notifications for community members
+            refreshNotifications()
+        } catch (err: any) {
+            window.alert(err.response?.data?.message || err.response?.data?.error || 'Failed to share resource')
+        } finally {
+            setIsSubmittingResource(false)
         }
     }
 
-    if (isLoading) {
+    if (isLoading && !discussionData) {
         return (
-            <Container>
+            <div className="container">
                 <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-                    <Spinner animation="border" role="status">
+                    <div className="spinner-border" role="status">
                         <span className="visually-hidden">Loading...</span>
-                    </Spinner>
+                    </div>
                 </div>
-            </Container>
+            </div>
         )
     }
 
     if (error) {
         return (
-            <Container>
-                <Alert variant="danger">
-                    Error loading discussion. Please try again later.
-                </Alert>
-            </Container>
+            <div className="container">
+                <div className="alert alert-danger" role="alert">{error}</div>
+            </div>
         )
     }
 
-    if (!discussion?.data) {
+    if (!discussionData) {
         return (
-            <Container>
-                <Alert variant="warning">
-                    Discussion not found.
-                </Alert>
-            </Container>
+            <div className="container">
+                <div className="alert alert-warning" role="alert">Discussion not found.</div>
+            </div>
         )
     }
-
-    const discussionData = discussion.data
 
     return (
-        <Container>
-            <Row>
-                <Col>
-                    {/* Discussion Header */}
-                    <Card className="mb-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h1>{discussionData.title}</h1>
-                                    <div className="d-flex align-items-center gap-3 mb-3">
-                                        <Badge bg="info" className="category-badge">
-                                            {discussionData.category}
-                                        </Badge>
-                                        <small className="text-muted">
-                                            by {discussionData.author?.username}
-                                        </small>
-                                        <small className="text-muted">
-                                            {format(new Date(discussionData.createdAt), 'MMM d, yyyy')}
-                                        </small>
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="outline-secondary"
-                                    onClick={() => navigate(-1)}
-                                >
-                                    Back
-                                </Button>
-                            </div>
-
-                            <div className="discussion-content">
-                                {discussionData.content.split('\n').map((paragraph: string, index: number) => (
-                                    <p key={index} className="mb-3">
-                                        {paragraph}
-                                    </p>
-                                ))}
-                            </div>
-
-                            <div className="d-flex justify-content-between align-items-center">
-                                <div className="stats-text">
-                                    <span className="me-3">{discussionData.comments?.length || 0} comments</span>
-                                    <span className="me-3">{discussionData.views || 0} views</span>
-                                    <span>{discussionData.likes?.length || 0} likes</span>
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
+            <div className="container" style={{ flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Discussion Header */}
+                <div className="card mb-1" style={{}}>
+                    <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start ">
+                            <div style={{ flex: 1 }}>
+                                <h1 style={{ textAlign: 'left', fontSize: '2rem', fontWeight: '700', marginBottom: '0.75rem' }}>{discussionData.title}</h1>
+                                <div className="d-flex align-items-center gap-3 mb-3">
+                                    <span className="badge bg-info category-badge">
+                                        {discussionData.category}
+                                    </span>
+                                    <small className="text-muted">
+                                        by {discussionData.author?.username}
+                                    </small>
+                                    <small className="text-muted">
+                                        {format(new Date(discussionData.createdAt), 'MMM d, yyyy')}
+                                    </small>
                                 </div>
                             </div>
-                        </Card.Body>
-                    </Card>
+                            <button className="btn btn-outline-secondary" onClick={() => navigate(-1)}>Back</button>
+                        </div>
 
-                    {/* Add Comment Form */}
-                    {user && (
-                        <Card className="mb-4">
-                            <Card.Body>
-                                <h5>Add a Comment</h5>
-                                <Form onSubmit={handleAddComment}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Control
-                                            as="textarea"
-                                            rows={3}
-                                            placeholder="Share your thoughts..."
-                                            value={comment}
-                                            onChange={(e) => setComment(e.target.value)}
-                                            required
-                                        />
-                                    </Form.Group>
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        disabled={addCommentMutation.isLoading}
-                                    >
-                                        {addCommentMutation.isLoading ? 'Posting...' : 'Post Comment'}
-                                    </Button>
-                                </Form>
-                            </Card.Body>
-                        </Card>
-                    )}
+                        {/* <div className="discussion-content" style={{ textAlign: 'left', lineHeight: '1.8' }}>
+                            {discussionData.content.split('\n').map((paragraph: string, index: number) => (
+                                <p key={index} className="mb-3" style={{ textAlign: 'left' }}>
+                                    {paragraph}
+                                </p>
+                            ))}
+                        </div> */}
 
-                    {/* Comments Section */}
-                    <Card>
-                        <Card.Body>
-                            <h5 className="mb-3">
-                                Comments ({discussionData.comments?.length || 0})
-                            </h5>
+                        {/* <div className="d-flex justify-content-between align-items-center">
+                            <div className="stats-text"> */}
+                        {/* <span className="me-3">{discussionData.comments?.length || 0} comments</span> */}
+                        {/* <span className="me-3">{discussionData.views || 0} views</span>
+                                <span>{discussionData.likes?.length || 0} likes</span> */}
+                        {/* </div>
+                        </div> */}
+                    </div>
+                </div>
 
-                            {discussionData.comments?.length === 0 ? (
+                {/* Comments Section - Scrollable */}
+                <div
+                    className="card mb-2"
+                    style={{
+                        flex: '1',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        minHeight: 0
+                    }}
+                >
+                    <div className="card-body" style={{ flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <h5 className="mb-3" style={{ flexShrink: 0 }}>
+                            Comments ({discussionData.comments?.length || 0})
+                        </h5>
+
+                        <div
+                            ref={chatContainerRef}
+                            style={{
+                                flex: '1',
+                                overflowY: 'auto',
+                                paddingRight: '10px'
+                            }}
+                        >
+                            {discussionData.comments?.length === 0 && resources.length === 0 ? (
                                 <p className="text-muted text-center py-3">
                                     No comments yet. Be the first to comment!
                                 </p>
                             ) : (
-                                <div className="comment-section">
-                                    {discussionData.comments?.map((comment: any) => (
-                                        <div key={comment._id} className="comment-item">
-                                            <div className="d-flex justify-content-between align-items-start">
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex align-items-center mb-2">
-                                                        <strong className="me-2">{comment.author?.username}</strong>
-                                                        <small className="text-muted">
-                                                            {format(new Date(comment.createdAt), 'MMM d, yyyy h:mm a')}
-                                                        </small>
+                                <div className="comment-section" style={{ textAlign: 'left' }}>
+                                    {/* Display resources mixed with comments, sorted by creation date */}
+                                    {[...(discussionData.comments || []), ...resources].sort((a, b) => {
+                                        const dateA = new Date(a.createdAt).getTime()
+                                        const dateB = new Date(b.createdAt).getTime()
+                                        return dateA - dateB
+                                    }).map((item: any) => {
+                                        // Check if it's a resource (has link property) or comment (has content property)
+                                        if (item.link) {
+                                            // It's a resource - ensure left alignment
+                                            return (
+                                                <div key={`resource-${item._id}`} className="comment-item mb-3 pb-3 border-bottom" style={{ textAlign: 'left' }}>
+                                                    <div className="d-flex justify-content-start align-items-start" style={{ textAlign: 'left' }}>
+                                                        <div className="flex-grow-1" style={{ textAlign: 'left' }}>
+                                                            <div className="d-flex align-items-center mb-2" style={{ justifyContent: 'flex-start' }}>
+                                                                <strong className="me-2">{item.author?.username}</strong>
+                                                                <span className="badge bg-success me-2">Shared Resource</span>
+                                                                <small className="text-muted">
+                                                                    {format(new Date(item.createdAt), 'MMM d, yyyy h:mm a')}
+                                                                </small>
+                                                            </div>
+                                                            <div className="card bg-light p-3 mb-2" style={{ textAlign: 'left', backgroundColor: '#f8fafc' }}>
+                                                                <h6 className="mb-2" style={{ textAlign: 'left' }}>{item.title}</h6>
+                                                                {item.description && (
+                                                                    <p className="mb-2 text-muted small" style={{ textAlign: 'left' }}>{item.description}</p>
+                                                                )}
+                                                                <div className="d-flex align-items-center gap-2" style={{ justifyContent: 'flex-start' }}>
+                                                                    <span className="badge bg-info">{item.type}</span>
+                                                                    <a
+                                                                        href={item.link}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="btn btn-sm btn-outline-primary"
+                                                                    >
+                                                                        Open Link
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <p className="mb-0">{comment.content}</p>
                                                 </div>
-                                                {user && user.id === comment.author?._id && (
-                                                    <Button
-                                                        variant="outline-danger"
-                                                        size="sm"
-                                                        onClick={() => handleDeleteComment(comment._id)}
-                                                        disabled={deleteCommentMutation.isLoading}
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                                            )
+                                        } else {
+                                            // It's a comment - ensure left alignment
+                                            return (
+                                                <div key={`comment-${item._id}`} className="comment-item mb-3 pb-3 border-bottom" style={{ textAlign: 'left' }}>
+                                                    <div className="d-flex justify-content-start align-items-start" style={{ textAlign: 'left' }}>
+                                                        <div className="flex-grow-1" style={{ textAlign: 'left' }}>
+                                                            <div className="d-flex align-items-center mb-2" style={{ justifyContent: 'flex-start' }}>
+                                                                <strong className="me-2">{item.author?.username}</strong>
+                                                                <small className="text-muted">
+                                                                    {format(new Date(item.createdAt), 'MMM d, yyyy h:mm a')}
+                                                                </small>
+                                                            </div>
+                                                            <p className="mb-0" style={{ textAlign: 'left' }}>{item.content}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+                                    })}
+                                    <div ref={commentsEndRef} />
                                 </div>
                             )}
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Add Comment/Resource Form - Fixed at Bottom */}
+                {user && (
+                    <div className="card" style={{}}>
+                        <div className="card-body">
+                            <div className="d-flex gap-2 mb-2">
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${!showResourceForm ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                    onClick={() => setShowResourceForm(false)}
+                                >
+                                    Comment
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${showResourceForm ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                    onClick={() => setShowResourceForm(true)}
+                                >
+                                    Share Resource
+                                </button>
+                            </div>
+
+                            {!showResourceForm ? (
+                                <form onSubmit={handleAddComment}>
+                                    <div className="d-flex justify-content">
+                                        <div className="mb-1 d-flex flex-grow-1 p-2">
+                                            <textarea
+                                                className="form-control"
+                                                rows={1}
+                                                placeholder="Share your thoughts..."
+                                                value={comment}
+                                                onChange={(e) => setComment(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="d-flex align-items-center justify-content-end">
+                                            <button type="submit" className="btn btn-primary" disabled={isLoading || !comment.trim()}>
+                                                {isLoading ? 'Posting...' : 'Post Comment'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </form>
+                            ) : (
+                                <form onSubmit={handleShareResource}>
+                                    <div className="row mb-2">
+                                        <div className="col-md-8">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Resource title"
+                                                value={resourceForm.title}
+                                                onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="col-md-4">
+                                            <select
+                                                className="form-select"
+                                                value={resourceForm.type}
+                                                onChange={(e) => setResourceForm({ ...resourceForm, type: e.target.value })}
+                                            >
+                                                <option value="link">Link</option>
+                                                <option value="article">Article</option>
+                                                <option value="video">Video</option>
+                                                <option value="document">Document</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="mb-2">
+                                        <input
+                                            type="url"
+                                            className="form-control"
+                                            placeholder="https://example.com"
+                                            value={resourceForm.link}
+                                            onChange={(e) => setResourceForm({ ...resourceForm, link: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-1">
+                                        <textarea
+                                            className="form-control"
+                                            rows={1}
+                                            placeholder="Description (optional)"
+                                            value={resourceForm.description}
+                                            onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="d-flex justify-content-end">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-secondary me-2"
+                                            onClick={() => {
+                                                setShowResourceForm(false)
+                                                setResourceForm({ title: '', type: 'link', link: '', description: '' })
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary"
+                                            disabled={isSubmittingResource || !resourceForm.title.trim() || !resourceForm.link.trim()}
+                                        >
+                                            {isSubmittingResource ? 'Sharing...' : 'Share Resource'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
     )
 }
 

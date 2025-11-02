@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { Container, Card, Form, Button, Alert, Row, Col } from 'react-bootstrap'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 interface SignupFormData {
+    username: string
     email: string
     password: string
     confirmPassword: string
+
 }
 
 const SignupPage: React.FC = () => {
@@ -16,21 +16,31 @@ const SignupPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
 
-    const {
-        register,
-        handleSubmit,
-        watch,
-        formState: { errors },
-    } = useForm<SignupFormData>()
+    const [form, setForm] = useState<SignupFormData>({ username: '', email: '', password: '', confirmPassword: '' })
+    const [formErrors, setFormErrors] = useState<Partial<SignupFormData>>({})
 
-    const password = watch('password')
+    const validate = (): boolean => {
+        const errs: Partial<SignupFormData> = {}
+        if (!form.username) errs.username = 'Username is required'
+        else if (form.username.length < 3) errs.username = 'Username must be at least 3 characters'
+        if (!form.email) errs.email = 'Email is required'
+        else if (!/^\S+@\S+$/.test(form.email)) errs.email = 'Invalid email address'
+        if (!form.password) errs.password = 'Password is required'
+        else if (form.password.length < 6) errs.password = 'Password must be at least 6 characters'
+        if (!form.confirmPassword) errs.confirmPassword = 'Please confirm your password'
+        else if (form.confirmPassword !== form.password) errs.confirmPassword = 'Passwords do not match'
+        setFormErrors(errs)
+        return Object.keys(errs).length === 0
+    }
 
-    const onSubmit = async (data: SignupFormData) => {
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!validate()) return
         setIsLoading(true)
         setError('')
 
         try {
-            await signup(data.email, data.password)
+            await signup(form.username, form.email, form.password)
             navigate('/login')
         } catch (err: any) {
             setError(err.response?.data?.error || 'Signup failed')
@@ -40,84 +50,84 @@ const SignupPage: React.FC = () => {
     }
 
     return (
-        <Container className="mt-5">
-            <Row className="justify-content-center">
-                <Col md={6} lg={4}>
-                    <Card>
-                        <Card.Body>
-                            <Card.Title className="text-center mb-4">Join Discussify</Card.Title>
+        <div className="container mt-5">
+            <div className="row justify-content-center">
+                <div className="col-md-6 col-lg-4">
+                    <div className="card">
+                        <div className="card-body">
+                            <h5 className="card-title text-center mb-4">Join Discussify</h5>
 
                             {error && (
-                                <Alert variant="danger" className="mb-3">
+                                <div className="alert alert-danger mb-3" role="alert">
                                     {error}
-                                </Alert>
+                                </div>
                             )}
 
-                            <Form onSubmit={handleSubmit(onSubmit)}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Email</Form.Label>
-                                    <Form.Control
+                            <form onSubmit={onSubmit} noValidate>
+                                <div className="mb-3">
+                                    <label className="form-label">Username</label>
+                                    <input
+                                        type="text"
+                                        className={`form-control ${formErrors.username ? 'is-invalid' : ''}`}
+                                        placeholder="Enter your username"
+                                        value={form.username}
+                                        onChange={(e) => setForm({ ...form, username: e.target.value })}
+                                    />
+                                    {formErrors.username && (
+                                        <div className="invalid-feedback">{formErrors.username}</div>
+                                    )}
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Email</label>
+                                    <input
                                         type="email"
+                                        className={`form-control ${formErrors.email ? 'is-invalid' : ''}`}
                                         placeholder="Enter your email"
-                                        isInvalid={!!errors.email}
-                                        {...register('email', {
-                                            required: 'Email is required',
-                                            pattern: {
-                                                value: /^\S+@\S+$/i,
-                                                message: 'Invalid email address',
-                                            },
-                                        })}
+                                        value={form.email}
+                                        onChange={(e) => setForm({ ...form, email: e.target.value })}
                                     />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.email?.message}
-                                    </Form.Control.Feedback>
-                                </Form.Group>
+                                    {formErrors.email && (
+                                        <div className="invalid-feedback">{formErrors.email}</div>
+                                    )}
+                                </div>
 
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Password</Form.Label>
-                                    <Form.Control
+                                <div className="mb-3">
+                                    <label className="form-label">Password</label>
+                                    <input
                                         type="password"
+                                        className={`form-control ${formErrors.password ? 'is-invalid' : ''}`}
                                         placeholder="Enter your password"
-                                        isInvalid={!!errors.password}
-                                        {...register('password', {
-                                            required: 'Password is required',
-                                            minLength: {
-                                                value: 8,
-                                                message: 'Password must be at least 8 characters',
-                                            },
-                                        })}
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })}
                                     />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.password?.message}
-                                    </Form.Control.Feedback>
-                                </Form.Group>
+                                    {formErrors.password && (
+                                        <div className="invalid-feedback">{formErrors.password}</div>
+                                    )}
+                                </div>
 
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Confirm Password</Form.Label>
-                                    <Form.Control
+                                <div className="mb-3">
+                                    <label className="form-label">Confirm Password</label>
+                                    <input
                                         type="password"
+                                        className={`form-control ${formErrors.confirmPassword ? 'is-invalid' : ''}`}
                                         placeholder="Confirm your password"
-                                        isInvalid={!!errors.confirmPassword}
-                                        {...register('confirmPassword', {
-                                            required: 'Please confirm your password',
-                                            validate: (value) =>
-                                                value === password || 'Passwords do not match',
-                                        })}
+                                        value={form.confirmPassword}
+                                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                                     />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.confirmPassword?.message}
-                                    </Form.Control.Feedback>
-                                </Form.Group>
+                                    {formErrors.confirmPassword && (
+                                        <div className="invalid-feedback">{formErrors.confirmPassword}</div>
+                                    )}
+                                </div>
 
-                                <Button
+                                <button
                                     type="submit"
-                                    variant="primary"
-                                    className="w-100 mb-3"
+                                    className="btn btn-primary w-100 mb-3"
                                     disabled={isLoading}
                                 >
                                     {isLoading ? 'Creating Account...' : 'Sign Up'}
-                                </Button>
-                            </Form>
+                                </button>
+                            </form>
 
                             <div className="text-center">
                                 <small className="text-muted">
@@ -127,11 +137,11 @@ const SignupPage: React.FC = () => {
                                     </Link>
                                 </small>
                             </div>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
 

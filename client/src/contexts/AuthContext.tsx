@@ -1,19 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authAPI } from '../services/api'
-import toast from 'react-hot-toast'
 
 interface User {
     id: string
     username: string
     email: string
     bio?: string
+    avatar?: string
 }
 
 interface AuthContextType {
     user: User | null
     token: string | null
     login: (email: string, password: string) => Promise<void>
-    signup: (email: string, password: string) => Promise<void>
+    signup: (username: string, email: string, password: string) => Promise<void>
     logout: () => void
     loading: boolean
 }
@@ -67,22 +67,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userResponse = await authAPI.getMe()
             setUser(userResponse.data)
 
-            toast.success('Login successful!')
         } catch (error: any) {
-            const message = error.response?.data?.error || 'Login failed'
-            toast.error(message)
             throw error
         }
     }
 
-    const signup = async (email: string, password: string) => {
+    const signup = async (username: string, email: string, password: string) => {
         try {
-            const response = await authAPI.signup(email, password)
-
-            toast.success('Registration successful! Please login.')
+            await authAPI.signup(username, email, password)
         } catch (error: any) {
-            const message = error.response?.data?.error || 'Registration failed'
-            toast.error(message)
             throw error
         }
     }
@@ -91,7 +84,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('token')
         setToken(null)
         setUser(null)
-        toast.success('Logged out successfully')
     }
 
     const value = {

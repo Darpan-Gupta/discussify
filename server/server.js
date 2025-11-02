@@ -11,26 +11,30 @@ const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const discussionRoutes = require('./routes/discussionRoutes');
+const discussionsRouter = require('./routes/discussions');
+const usersRouter = require('./routes/users');
 const resourceRoutes = require('./routes/resourceRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const errorHandler = require('./utils/errorHandler');
 
 const app = express();
 
 // Security middleware
-app.use(helmet());
+// app.use(helmet());
 
-// Rate limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+// // Rate limiting
+// const limiter = rateLimit({
+//     windowMs: 15 * 60 * 1000, // 15 minutes
+//     max: 100 // limit each IP to 100 requests per windowMs
+// });
+// app.use(limiter);
 
 // CORS configuration
-app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true
-}));
+app.use(cors(
+    {
+        origin: "*",
+    }
+));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -56,7 +60,10 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1', profileRoutes);
 app.use('/api/v1', communityRoutes);
 app.use('/api/v1', discussionRoutes);
-app.use('/api/v1', resourceRoutes);
+app.use('/api/v1/resources', resourceRoutes);
+app.use('/api/v1/discussions', discussionsRouter);
+app.use('/api/v1/users', usersRouter);
+app.use('/api/v1', notificationRoutes);
 
 // Ping route
 app.get('/api/v1/ping', (req, res) => {

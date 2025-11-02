@@ -4,7 +4,6 @@ const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
-        unique: true,
         trim: true,
         minlength: 3,
         maxlength: 30
@@ -41,13 +40,23 @@ const userSchema = new mongoose.Schema({
     communities: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Community'
-    }]
+    }],
+    notificationPreferences: {
+        discussion: {
+            type: Boolean,
+            default: true
+        },
+        resource: {
+            type: Boolean,
+            default: true
+        }
+    }
 }, {
     timestamps: true
 });
 
 // Index for better query performance
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+// userSchema.index({ email: 1 });
+// userSchema.index({ username: 1 });
 
 module.exports = mongoose.model('User', userSchema);

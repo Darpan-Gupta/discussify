@@ -1,0 +1,265 @@
+Discussify
+Overview
+
+Discussify is a social platform that allows users to create communities, join discussions, and share resources with others.
+It is a MERN Stack technology-based web application designed to connect like-minded individuals who wish to engage in meaningful conversations.
+
+The application has professional-level complexity and offers a range of features that make interaction seamless.
+The user interface is simple, intuitive, and accessible even to non-technical users.
+
+Key Features
+1. User Profiles
+
+Users can create profiles, join communities, and participate in discussions on various topics.
+
+2. Community Creation
+
+Users can create their own communities based on interests.
+
+Communities can be public or private.
+
+Users can invite others to join.
+
+This allows people to connect and discuss shared passions.
+
+3. Discussions
+
+Users can browse communities and join discussions of interest.
+
+They can share thoughts, ask questions, and participate in debates.
+
+Helps in broadening perspectives and learning collaboratively.
+
+4. Resource Sharing
+
+Users can share articles, videos, or any useful resources.
+
+Encourages collaborative learning and information exchange.
+
+Technology Stack
+
+Frontend: React.js
+
+Backend: Node.js + Express.js
+
+Database: MongoDB
+
+Authentication: JWT (JSON Web Tokens)
+
+Overall Requirements
+
+The reference video showcases minimum requirements for the Discussify web app.
+Your implementation should be an improvised version, focusing on user experience, accessibility, and reliability.
+
+Development Guidelines
+
+Use Git for code integration and version control.
+
+Minimum one push per trainee per day.
+
+Use Material Design Components where appropriate.
+
+Add validations wherever necessary.
+
+Example: Ensure the trip start date is not before today.
+
+Provide clear and grammatically correct error/success messages.
+
+Maintain a uniform color theme throughout the website.
+
+Refer to the provided styles.css for consistent styling.
+
+Ensure web accessibility principles are followed.
+
+This was not implemented in the reference version.
+
+Product Backlog
+User Story 1
+
+Description: As a new user, I should be able to create an account and log in to the platform.
+Story Points: 5
+
+Priority / MoSCoW Parameters
+
+Must Have:
+
+User should be able to create a new account with a unique email and password.
+
+User should be able to log in with valid credentials.
+
+Should Have:
+
+Password reset option for forgotten passwords.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+User receives a confirmation email after successful account creation.
+
+Redirected to profile page after login.
+
+Don'ts / Negative Points:
+
+Cannot create an account with an existing email.
+
+Cannot log in with incorrect credentials.
+
+User Story 2
+
+Description: As a user, I should be able to create and manage my profile.
+Story Points: 3
+
+Must Have
+
+Edit profile information.
+
+Upload a profile picture.
+
+Should Have
+
+View user activity on the platform.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+Successfully update profile information.
+
+View own activity.
+
+Don'ts / Negative Points:
+
+Cannot upload images exceeding the maximum size limit.
+
+Cannot edit email address.
+
+User Story 3
+
+Description: As a user, I should be able to create a community and invite others to join.
+Story Points: 5
+
+Must Have
+
+Create a new community.
+
+Invite users to join.
+
+Should Have
+
+Edit community information.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+Successfully create communities.
+
+Successfully invite others.
+
+Don'ts / Negative Points:
+
+Cannot create a community with an existing name.
+
+Cannot invite users who are already members.
+
+User Story 4
+
+Description: As a user, I should be able to join a community and participate in discussions.
+Story Points: 5
+
+Must Have
+
+Join a community.
+
+Participate in discussions.
+
+Should Have
+
+Search for communities using keywords.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+Successfully join a community.
+
+Participate in community discussions.
+
+Don'ts / Negative Points:
+
+Cannot join private communities without an invitation.
+
+Cannot post if not a community member.
+
+User Story 5
+
+Description: As a user, I should be able to share resources with others in a community.
+Story Points: 3
+
+Must Have
+
+Share articles, videos, or other resources in a community.
+
+Should Have
+
+View resources shared by others.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+Successfully share resources.
+
+View resources shared by others.
+
+Don'ts / Negative Points:
+
+Cannot share oversized files.
+
+Cannot share inappropriate content.
+
+User Story 6
+
+Description: As an admin, I should be able to manage communities and users.
+Story Points: 8
+
+Must Have
+
+Delete communities and users.
+
+Should Have
+
+Edit community and user details.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+Successfully delete and edit communities/users.
+
+Don'ts / Negative Points:
+
+Cannot delete communities with active discussions.
+
+Cannot edit user email addresses.
+
+User Story 7
+
+Description: As a user, I should receive notifications for new discussions and shared resources in my communities.
+Story Points: 3
+
+Must Have
+
+Receive notifications for new discussions/resources.
+
+Should Have
+
+Manage notification settings.
+
+Acceptance Criteria
+Dos / Positive Points:
+
+Successfully receive notifications.
+
+Manage notification preferences.
+
+Don'ts / Negative Points:
+
+No notifications for communities the user has left.
+
+Cannot disable all notifications entirely.

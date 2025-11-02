@@ -1,53 +1,57 @@
-import React, { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { Container, Card, Form, Button, Alert, Row, Col, Spinner } from 'react-bootstrap'
+import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { profileAPI } from '../services/api'
-import toast from 'react-hot-toast'
 
 interface ProfileFormData {
     username: string
     bio: string
 }
 
+const API_BASE_URL = 'http://localhost:5000'
+
 const ProfilePage: React.FC = () => {
     const { user } = useAuth()
+
     const [isLoading, setIsLoading] = useState(false)
     const [isUploading, setIsUploading] = useState(false)
     const [error, setError] = useState('')
+    const [form, setForm] = useState<ProfileFormData>({ username: '', bio: '' })
+    const [formErrors, setFormErrors] = useState<Partial<ProfileFormData>>({})
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-        reset,
-    } = useForm<ProfileFormData>({
-        defaultValues: {
-            username: user?.username || '',
-            bio: user?.bio || '',
-        },
-    })
+    const getAvatarUrl = (avatarPath: string | undefined): string | null => {
+        if (!avatarPath) return null
+        // If avatar path already starts with http, return as is
+        if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+            return avatarPath
+        }
+        // If avatar path doesn't start with '/', add it
+        const normalizedPath = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`
+        // console.log(`${API_BASE_URL}${normalizedPath}`)
+        return `${API_BASE_URL}${normalizedPath}`
+    }
 
     useEffect(() => {
         if (user) {
-            reset({
-                username: user.username || '',
-                bio: user.bio || '',
-            })
+            setForm({ username: user.username || '', bio: user.bio || '' })
         }
-    }, [user, reset])
+    }, [user])
 
-    const onSubmit = async (data: ProfileFormData) => {
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const errs: Partial<ProfileFormData> = {}
+        if (!form.username) errs.username = 'Username is required'
+        else if (form.username.length < 3) errs.username = 'Username must be at least 3 characters'
+        setFormErrors(errs)
+        if (Object.keys(errs).length > 0) return
         setIsLoading(true)
         setError('')
 
         try {
-            await profileAPI.update(data)
-            toast.success('Profile updated successfully!')
+            await profileAPI.update(form)
+            window.alert('Profile updated successfully!')
         } catch (err: any) {
             const message = err.response?.data?.error || 'Failed to update profile'
             setError(message)
-            toast.error(message)
         } finally {
             setIsLoading(false)
         }
@@ -59,25 +63,25 @@ const ProfilePage: React.FC = () => {
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            toast.error('Please select an image file')
+            window.alert('Please select an image file')
             return
         }
 
         // Validate file size (2MB)
         if (file.size > 2 * 1024 * 1024) {
-            toast.error('File size must be less than 2MB')
+            window.alert('File size must be less than 2MB')
             return
         }
 
         setIsUploading(true)
         try {
             await profileAPI.uploadPicture(file)
-            toast.success('Profile picture uploaded successfully!')
+            window.alert('Profile picture uploaded successfully!')
             // Refresh user data
             window.location.reload()
         } catch (err: any) {
             const message = err.response?.data?.error || 'Failed to upload picture'
-            toast.error(message)
+            window.alert(message)
         } finally {
             setIsUploading(false)
         }
@@ -85,41 +89,52 @@ const ProfilePage: React.FC = () => {
 
     if (!user) {
         return (
-            <Container className="mt-5">
+            <div className="container mt-5">
                 <div className="d-flex justify-content-center">
-                    <Spinner animation="border" role="status">
+                    <div className="spinner-border" role="status">
                         <span className="visually-hidden">Loading...</span>
-                    </Spinner>
+                    </div>
                 </div>
-            </Container>
+            </div>
         )
     }
 
     return (
-        <Container className="mt-5">
-            <Row className="justify-content-center">
-                <Col md={8}>
-                    <Card>
-                        <Card.Body>
-                            <Card.Title className="text-center mb-4">Profile Settings</Card.Title>
+        <div className="container mt-5">
+            <div className="row justify-content-center">
+                <div className="col-md-8">
+                    <div className="card">
+                        <div className="card-body">
+                            <h5 className="card-title text-center mb-4">Profile Settings</h5>
 
                             {error && (
-                                <Alert variant="danger" className="mb-3">
-                                    {error}
-                                </Alert>
+                                <div className="alert alert-danger mb-3" role="alert">{error}</div>
                             )}
 
-                            <Form onSubmit={handleSubmit(onSubmit)}>
-                                <Row>
-                                    <Col md={4} className="text-center mb-4">
+                            <form onSubmit={onSubmit} noValidate>
+                                <div className="row">
+                                    <div className="col-md-4 text-center mb-4">
                                         <div className="mb-3">
                                             {user.avatar ? (
-                                                <img
-                                                    src={`/uploads/${user.avatar}`}
-                                                    alt="Profile"
-                                                    className="rounded-circle"
-                                                    style={{ width: '150px', height: '150px', objectFit: 'cover' }}
-                                                />
+                                                <>
+                                                    <img
+                                                        src={getAvatarUrl(user.avatar) || ''}
+                                                        // src={'Screenshot-(220)-1761844187176.png'}
+                                                        alt="Profile"
+                                                        className="rounded-circle"
+                                                        style={{ width: '150px', height: '150px', objectFit: 'cover' }}
+                                                    // onError={(e) => {
+                                                    //     // Hide the broken image and show fallback
+                                                    //     const target = e.target as HTMLImageElement;
+                                                    //     target.style.display = 'none';
+                                                    //     const fallback = target.nextElementSibling as HTMLElement;
+                                                    //     if (fallback) {
+                                                    //         fallback.style.display = 'flex';
+                                                    //     }
+                                                    // }}
+                                                    />
+
+                                                </>
                                             ) : (
                                                 <div
                                                     className="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
@@ -132,93 +147,63 @@ const ProfilePage: React.FC = () => {
                                             )}
                                         </div>
                                         <div>
-                                            <Form.Group>
-                                                <Form.Label htmlFor="profile-picture" className="btn btn-outline-primary">
-                                                    {isUploading ? 'Uploading...' : 'Change Picture'}
-                                                </Form.Label>
-                                                <Form.Control
-                                                    id="profile-picture"
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleFileUpload}
-                                                    disabled={isUploading}
-                                                    style={{ display: 'none' }}
-                                                />
-                                            </Form.Group>
+                                            <label htmlFor="profile-picture" className="btn btn-outline-primary">
+                                                {isUploading ? 'Uploading...' : 'Change Picture'}
+                                            </label>
+                                            <input
+                                                id="profile-picture"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileUpload}
+                                                disabled={isUploading}
+                                                style={{ display: 'none' }}
+                                            />
                                         </div>
-                                    </Col>
+                                    </div>
 
-                                    <Col md={8}>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Email</Form.Label>
-                                            <Form.Control
-                                                type="email"
-                                                value={user.email}
-                                                disabled
-                                                className="bg-light"
-                                            />
-                                            <Form.Text className="text-muted">
-                                                Email cannot be changed
-                                            </Form.Text>
-                                        </Form.Group>
+                                    <div className="col-md-8">
+                                        <div className="mb-3">
+                                            <label className="form-label">Email</label>
+                                            <input type="email" className="form-control bg-light" value={user.email} disabled />
+                                            <div className="form-text">Email cannot be changed</div>
+                                        </div>
 
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Username</Form.Label>
-                                            <Form.Control
+                                        <div className="mb-3">
+                                            <label className="form-label">Username</label>
+                                            <input
                                                 type="text"
+                                                className={`form-control ${formErrors.username ? 'is-invalid' : ''}`}
                                                 placeholder="Enter your username"
-                                                isInvalid={!!errors.username}
-                                                {...register('username', {
-                                                    required: 'Username is required',
-                                                    minLength: {
-                                                        value: 3,
-                                                        message: 'Username must be at least 3 characters',
-                                                    },
-                                                    maxLength: {
-                                                        value: 30,
-                                                        message: 'Username must be less than 30 characters',
-                                                    },
-                                                })}
+                                                value={form.username}
+                                                onChange={(e) => setForm({ ...form, username: e.target.value })}
                                             />
-                                            <Form.Control.Feedback type="invalid">
-                                                {errors.username?.message}
-                                            </Form.Control.Feedback>
-                                        </Form.Group>
+                                            {formErrors.username && (
+                                                <div className="invalid-feedback">{formErrors.username}</div>
+                                            )}
+                                        </div>
 
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Bio</Form.Label>
-                                            <Form.Control
-                                                as="textarea"
+                                        <div className="mb-3">
+                                            <label className="form-label">Bio</label>
+                                            <textarea
                                                 rows={3}
+                                                className="form-control"
                                                 placeholder="Tell us about yourself..."
-                                                isInvalid={!!errors.bio}
-                                                {...register('bio', {
-                                                    maxLength: {
-                                                        value: 500,
-                                                        message: 'Bio must be less than 500 characters',
-                                                    },
-                                                })}
+                                                value={form.bio}
+                                                onChange={(e) => setForm({ ...form, bio: e.target.value })}
                                             />
-                                            <Form.Control.Feedback type="invalid">
-                                                {errors.bio?.message}
-                                            </Form.Control.Feedback>
-                                        </Form.Group>
+                                        </div>
 
-                                        <Button
-                                            type="submit"
-                                            variant="primary"
-                                            disabled={isLoading}
-                                        >
+                                        <button type="submit" className="btn btn-primary" disabled={isLoading}>
                                             {isLoading ? 'Saving...' : 'Save Changes'}
-                                        </Button>
-                                    </Col>
-                                </Row>
-                            </Form>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
 

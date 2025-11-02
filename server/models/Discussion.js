@@ -43,6 +43,11 @@ const discussionSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    community: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Community',
+        required: true
+    },
     comments: [commentSchema],
     likes: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -73,6 +78,7 @@ const discussionSchema = new mongoose.Schema({
 discussionSchema.index({ createdAt: -1 });
 discussionSchema.index({ category: 1 });
 discussionSchema.index({ author: 1 });
+discussionSchema.index({ community: 1 });
 discussionSchema.index({ title: 'text', content: 'text' });
 
 module.exports = mongoose.model('Discussion', discussionSchema);

@@ -1,17 +1,17 @@
 import React, { useState } from 'react'
-import { Button, Spinner } from 'react-bootstrap'
 import { communitiesAPI } from '../services/api'
-import toast from 'react-hot-toast'
 
 interface JoinCommunityButtonProps {
     communityId: string
     isJoined?: boolean
+    inviteToken?: string
     onJoin?: () => void
 }
 
 const JoinCommunityButton: React.FC<JoinCommunityButtonProps> = ({
     communityId,
     isJoined = false,
+    inviteToken,
     onJoin,
 }) => {
     const [isLoading, setIsLoading] = useState(false)
@@ -19,14 +19,14 @@ const JoinCommunityButton: React.FC<JoinCommunityButtonProps> = ({
     const handleJoin = async () => {
         setIsLoading(true)
         try {
-            await communitiesAPI.join(communityId)
-            toast.success('Joined community successfully!')
+            await communitiesAPI.join(communityId, inviteToken)
+            window.alert('Joined community successfully!')
             if (onJoin) {
                 onJoin()
             }
         } catch (error: any) {
             const message = error.response?.data?.error || 'Failed to join community'
-            toast.error(message)
+            window.alert(message)
         } finally {
             setIsLoading(false)
         }
@@ -34,27 +34,27 @@ const JoinCommunityButton: React.FC<JoinCommunityButtonProps> = ({
 
     if (isJoined) {
         return (
-            <Button variant="success" disabled>
+            <button className="btn btn-success" disabled>
                 Joined
-            </Button>
+            </button>
         )
     }
 
     return (
-        <Button
-            variant="primary"
+        <button
+            className="btn btn-primary"
             onClick={handleJoin}
             disabled={isLoading}
         >
             {isLoading ? (
                 <>
-                    <Spinner animation="border" size="sm" className="me-2" />
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                     Joining...
                 </>
             ) : (
                 'Join Community'
             )}
-        </Button>
+        </button>
     )
 }
 

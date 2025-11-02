@@ -23,6 +23,15 @@ const communitySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
+    isPrivate: {
+        type: Boolean,
+        default: false
+    },
+    inviteToken: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
     isActive: {
         type: Boolean,
         default: true

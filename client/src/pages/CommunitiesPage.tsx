@@ -1,41 +1,30 @@
-import React, { useState } from 'react'
-import { Container, Row, Col, Card, Form, Button, Badge, Spinner, Alert } from 'react-bootstrap'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from 'react-query'
 import { communitiesAPI } from '../services/api'
 
 const CommunitiesPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [communities, setCommunities] = useState<any[]>([])
 
-    // Mock data for now - replace with actual API call when backend is ready
-    const mockCommunities = [
-        {
-            _id: '1',
-            name: 'Tech Enthusiasts',
-            description: 'A community for technology lovers and developers to share ideas and discuss latest trends.',
-            members: 1250,
-            creator: { username: 'techguru' },
-            createdAt: new Date('2024-01-15'),
-        },
-        {
-            _id: '2',
-            name: 'Art & Design',
-            description: 'Creative minds sharing their artwork, design tips, and inspiration.',
-            members: 890,
-            creator: { username: 'artist123' },
-            createdAt: new Date('2024-01-20'),
-        },
-        {
-            _id: '3',
-            name: 'Science & Research',
-            description: 'Scientific discussions, research papers, and academic collaboration.',
-            members: 2100,
-            creator: { username: 'scientist' },
-            createdAt: new Date('2024-01-10'),
-        },
-    ]
+    useEffect(() => {
+        const fetchCommunities = async () => {
+            setIsLoading(true)
+            setError(null)
+            try {
+                const response = await communitiesAPI.getAll()
+                setCommunities(response.data)
+            } catch (err) {
+                setError('Error loading communities')
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        fetchCommunities()
+    }, [])
 
-    const filteredCommunities = mockCommunities.filter(community =>
+    const filteredCommunities = communities.filter(community =>
         community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         community.description.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -45,91 +34,96 @@ const CommunitiesPage: React.FC = () => {
     }
 
     return (
-        <Container className="mt-4">
-            <Row className="mb-4">
-                <Col>
+        <div className="container mt-4">
+            <div className="row mb-4">
+                <div className="col">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h1>Communities</h1>
-                        <Link to="/communities/create">
-                            <Button variant="primary">Create Community</Button>
-                        </Link>
+                        <Link to="/communities/create" className="btn btn-primary">Create Community</Link>
                     </div>
 
-                    <Form onSubmit={handleSearch} className="mb-4">
-                        <Row>
-                            <Col md={8}>
-                                <Form.Control
+                    <form onSubmit={handleSearch} className="mb-4">
+                        <div className="row">
+                            <div className="col-md-8">
+                                <input
                                     type="text"
+                                    className="form-control"
                                     placeholder="Search communities..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
-                            </Col>
-                            <Col md={4}>
-                                <Button type="submit" variant="outline-primary" className="w-100">
+                            </div>
+                            <div className="col-md-4">
+                                <button type="submit" className="btn btn-outline-primary w-100">
                                     Search
-                                </Button>
-                            </Col>
-                        </Row>
-                    </Form>
-                </Col>
-            </Row>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
-            <Row>
-                {filteredCommunities.length === 0 ? (
-                    <Col>
-                        <Card>
-                            <Card.Body className="text-center py-5">
-                                <h5>No communities found</h5>
-                                <p className="text-muted">
-                                    {searchTerm
-                                        ? 'Try adjusting your search criteria'
-                                        : 'Be the first to create a community!'}
-                                </p>
-                                {!searchTerm && (
-                                    <Link to="/communities/create">
-                                        <Button variant="primary">Create Community</Button>
-                                    </Link>
-                                )}
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                ) : (
-                    filteredCommunities.map((community) => (
-                        <Col md={6} lg={4} key={community._id} className="mb-4">
-                            <Card className="h-100">
-                                <Card.Body>
-                                    <Card.Title>{community.name}</Card.Title>
-                                    <Card.Text className="text-muted">
-                                        {community.description}
-                                    </Card.Text>
+            {isLoading && (
+                <div className="d-flex justify-content-center">
+                    <div className="spinner-border" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            )}
 
-                                    <div className="d-flex justify-content-between align-items-center mb-3">
-                                        <small className="text-muted">
-                                            by {community.creator.username}
-                                        </small>
-                                        <Badge bg="info">
-                                            {community.members} members
-                                        </Badge>
-                                    </div>
+            {error && (
+                <div className="alert alert-danger" role="alert">{error}</div>
+            )}
 
-                                    <div className="d-flex justify-content-between">
-                                        <Link to={`/communities/${community._id}`}>
-                                            <Button variant="outline-primary" size="sm">
+            {!isLoading && !error && (
+                <div className="row">
+                    {filteredCommunities.length === 0 ? (
+                        <div className="col">
+                            <div className="card">
+                                <div className="card-body text-center py-5">
+                                    <h5>No communities found</h5>
+                                    <p className="text-muted">
+                                        {searchTerm
+                                            ? 'Try adjusting your search criteria'
+                                            : 'Be the first to create a community!'}
+                                    </p>
+                                    {!searchTerm && (
+                                        <Link to="/communities/create" className="btn btn-primary">Create Community</Link>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        filteredCommunities.map((community) => (
+                            <div className="col-md-6 col-lg-4 mb-4" key={community._id}>
+                                <div className="card h-100">
+                                    <div className="card-body">
+                                        <h5 className="card-title">{community.name}</h5>
+                                        <p className="card-text text-muted">{community.description}</p>
+
+                                        <div className="d-flex justify-content-between align-items-center mb-3">
+                                            <small className="text-muted">
+                                                by {community.creator?.username || 'Unknown'}
+                                            </small>
+                                            <span className="badge bg-info">{community.members?.length || 0} members</span>
+                                        </div>
+
+                                        <div className="d-flex justify-content-between">
+                                            <Link to={`/communities/${community._id}`} className="btn btn-outline-primary btn-sm">
                                                 View Details
-                                            </Button>
-                                        </Link>
-                                        <small className="text-muted">
-                                            {community.createdAt.toLocaleDateString()}
-                                        </small>
+                                            </Link>
+                                            <small className="text-muted">
+                                                {new Date(community.createdAt).toLocaleDateString()}
+                                            </small>
+                                        </div>
                                     </div>
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    ))
-                )}
-            </Row>
-        </Container>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
     )
 }
 

@@ -1,10 +1,7 @@
-import React from 'react'
-import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
-import { useMutation } from 'react-query'
-import { Container, Card, Form, Button, Row, Col } from 'react-bootstrap'
+import React, { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { discussionsAPI } from '../services/api'
-import toast from 'react-hot-toast'
+import { useNotifications } from '../contexts/NotificationContext'
 
 interface DiscussionFormData {
     title: string
@@ -14,32 +11,47 @@ interface DiscussionFormData {
 
 const CreateDiscussion: React.FC = () => {
     const navigate = useNavigate()
+    const { id } = useParams<{ id: string }>()
+    const { refreshNotifications } = useNotifications()
+    const [form, setForm] = useState<DiscussionFormData>({ title: '', content: '', category: 'General' })
+    const [errors, setErrors] = useState<Partial<DiscussionFormData>>({})
+    const [isLoading, setIsLoading] = useState(false)
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<DiscussionFormData>({
-        defaultValues: {
-            category: 'General',
-        },
-    })
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const errs: Partial<DiscussionFormData> = {}
+        if (!form.title) errs.title = 'Title is required'
+        if (!form.category) errs.category = 'Category is required'
+        if (!form.content) errs.content = 'Content is required'
+        setErrors(errs)
+        if (Object.keys(errs).length > 0) return
 
-    const createDiscussionMutation = useMutation(
-        (data: DiscussionFormData) => discussionsAPI.create(data),
-        {
-            onSuccess: (response) => {
-                toast.success('Discussion created successfully!')
-                navigate(`/discussion/${response.data._id}`)
-            },
-            onError: (error: any) => {
-                toast.error(error.response?.data?.message || 'Failed to create discussion')
-            },
+        if (!id) {
+            window.alert('Community ID is missing')
+            return
         }
-    )
 
-    const onSubmit = (data: DiscussionFormData) => {
-        createDiscussionMutation.mutate(data)
+        try {
+            setIsLoading(true)
+            const res = await discussionsAPI.create({
+                ...form,
+                communityId: id
+            })
+            window.alert('Discussion created successfully!')
+            // Refresh notifications for community members
+            refreshNotifications()
+            navigate(`/discussion/${res.data._id}`)
+        } catch (error: any) {
+            console.error('Error creating discussion:', error)
+            const errorMessage = error.response?.data?.message ||
+                error.response?.data?.error ||
+                error.response?.data?.errors?.[0]?.msg ||
+                error.message ||
+                'Failed to create discussion'
+            window.alert(errorMessage)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const categories = [
@@ -53,106 +65,89 @@ const CreateDiscussion: React.FC = () => {
     ]
 
     return (
-        <Container>
-            <Row className="justify-content-center">
-                <Col md={8}>
-                    <Card>
-                        <Card.Body>
-                            <Card.Title className="text-center mb-4">
-                                Create New Discussion
-                            </Card.Title>
+        <div className="container">
+            <div className="row justify-content-center">
+                <div className="col-md-8">
+                    <div className="card">
+                        <div className="card-body">
+                            <h5 className="card-title text-center mb-4">Create New Discussion</h5>
 
-                            <Form onSubmit={handleSubmit(onSubmit)}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Title</Form.Label>
-                                    <Form.Control
+                            <form onSubmit={onSubmit} noValidate>
+                                <div className="mb-3">
+                                    <label className="form-label">Title</label>
+                                    <input
                                         type="text"
+                                        className={`form-control ${errors.title ? 'is-invalid' : ''}`}
                                         placeholder="Enter a descriptive title for your discussion"
-                                        isInvalid={!!errors.title}
-                                        {...register('title', {
-                                            required: 'Title is required',
-                                            minLength: {
-                                                value: 1,
-                                                message: 'Title cannot be empty',
-                                            },
-                                            maxLength: {
-                                                value: 200,
-                                                message: 'Title must be less than 200 characters',
-                                            },
-                                        })}
+                                        value={form.title}
+                                        onChange={(e) => setForm({ ...form, title: e.target.value })}
                                     />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.title?.message}
-                                    </Form.Control.Feedback>
-                                </Form.Group>
+                                    {errors.title && (
+                                        <div className="invalid-feedback">{errors.title}</div>
+                                    )}
+                                </div>
 
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Category</Form.Label>
-                                    <Form.Select
-                                        isInvalid={!!errors.category}
-                                        {...register('category', {
-                                            required: 'Category is required',
-                                        })}
+                                <div className="mb-3">
+                                    <label className="form-label">Category</label>
+                                    <select
+                                        className={`form-select ${errors.category ? 'is-invalid' : ''}`}
+                                        value={form.category}
+                                        onChange={(e) => setForm({ ...form, category: e.target.value })}
                                     >
                                         {categories.map((category) => (
                                             <option key={category} value={category}>
                                                 {category}
                                             </option>
                                         ))}
-                                    </Form.Select>
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.category?.message}
-                                    </Form.Control.Feedback>
-                                </Form.Group>
+                                    </select>
+                                    {errors.category && (
+                                        <div className="invalid-feedback">{errors.category}</div>
+                                    )}
+                                </div>
 
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Content</Form.Label>
-                                    <Form.Control
-                                        as="textarea"
+                                <div className="mb-3">
+                                    <label className="form-label">Content</label>
+                                    <textarea
                                         rows={10}
+                                        className={`form-control ${errors.content ? 'is-invalid' : ''}`}
                                         placeholder="Share your thoughts, questions, or ideas..."
-                                        isInvalid={!!errors.content}
-                                        {...register('content', {
-                                            required: 'Content is required',
-                                            minLength: {
-                                                value: 1,
-                                                message: 'Content cannot be empty',
-                                            },
-                                            maxLength: {
-                                                value: 5000,
-                                                message: 'Content must be less than 5000 characters',
-                                            },
-                                        })}
+                                        value={form.content}
+                                        onChange={(e) => setForm({ ...form, content: e.target.value })}
                                     />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.content?.message}
-                                    </Form.Control.Feedback>
-                                    <Form.Text className="text-muted">
-                                        Be respectful and constructive in your discussion.
-                                    </Form.Text>
-                                </Form.Group>
+                                    {errors.content && (
+                                        <div className="invalid-feedback">{errors.content}</div>
+                                    )}
+                                    <div className="form-text">Be respectful and constructive in your discussion.</div>
+                                </div>
 
                                 <div className="d-flex justify-content-between">
-                                    <Button
-                                        variant="outline-secondary"
-                                        onClick={() => navigate(-1)}
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => {
+                                            if (id) {
+                                                navigate(`/communities/${id}`)
+                                            } else {
+                                                navigate(-1)
+                                            }
+                                        }}
                                     >
                                         Cancel
-                                    </Button>
-                                    <Button
+                                    </button>
+                                    <button
                                         type="submit"
-                                        variant="primary"
-                                        disabled={createDiscussionMutation.isLoading}
+                                        className="btn btn-primary"
+                                        disabled={isLoading}
                                     >
-                                        {createDiscussionMutation.isLoading ? 'Creating...' : 'Create Discussion'}
-                                    </Button>
+                                        {isLoading ? 'Creating...' : 'Create Discussion'}
+                                    </button>
                                 </div>
-                            </Form>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
 

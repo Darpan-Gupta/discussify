@@ -1,13 +1,11 @@
 import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { Container, Card, Form, Button, Alert, Row, Col } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { communitiesAPI } from '../services/api'
-import toast from 'react-hot-toast'
 
 interface CommunityFormData {
     name: string
     description: string
+    isPrivate: boolean
 }
 
 const CreateCommunityPage: React.FC = () => {
@@ -15,117 +13,148 @@ const CreateCommunityPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<CommunityFormData>()
+    const [form, setForm] = useState<CommunityFormData>({ name: '', description: '', isPrivate: false })
+    const [formErrors, setFormErrors] = useState<Partial<CommunityFormData>>({})
+    const [inviteLink, setInviteLink] = useState<string | null>(null)
 
-    const onSubmit = async (data: CommunityFormData) => {
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const errs: Partial<CommunityFormData> = {}
+        if (!form.name) errs.name = 'Community name is required'
+        if (!form.description) errs.description = 'Description is required'
+        setFormErrors(errs)
+        if (Object.keys(errs).length > 0) return
         setIsLoading(true)
         setError('')
 
         try {
-            await communitiesAPI.create(data)
-            toast.success('Community created successfully!')
-            navigate('/communities')
+            const response = await communitiesAPI.create(form)
+            window.alert('Community created successfully!')
+
+            // If private community, show invite link
+            if (form.isPrivate && response.data.community) {
+                const link = `${window.location.origin}/communities/${response.data.community._id}?token=${response.data.community.inviteToken}`
+                setInviteLink(link)
+            } else {
+                navigate('/communities')
+            }
         } catch (err: any) {
             const message = err.response?.data?.error || 'Failed to create community'
             setError(message)
-            toast.error(message)
         } finally {
             setIsLoading(false)
         }
     }
 
+    const copyInviteLink = () => {
+        if (inviteLink) {
+            navigator.clipboard.writeText(inviteLink)
+            window.alert('Invite link copied to clipboard!')
+        }
+    }
+
+    const handleContinue = () => {
+        navigate('/communities')
+    }
+
     return (
-        <Container className="mt-5">
-            <Row className="justify-content-center">
-                <Col md={8}>
-                    <Card>
-                        <Card.Body>
-                            <Card.Title className="text-center mb-4">
-                                Create New Community
-                            </Card.Title>
+        <div className="container mt-5">
+            <div className="row justify-content-center">
+                <div className="col-md-8">
+                    <div className="card">
+                        <div className="card-body">
+                            <h5 className="card-title text-center mb-4">Create New Community</h5>
 
                             {error && (
-                                <Alert variant="danger" className="mb-3">
-                                    {error}
-                                </Alert>
+                                <div className="alert alert-danger mb-3" role="alert">{error}</div>
                             )}
 
-                            <Form onSubmit={handleSubmit(onSubmit)}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Community Name</Form.Label>
-                                    <Form.Control
+                            <form onSubmit={onSubmit} noValidate>
+                                <div className="mb-3">
+                                    <label className="form-label">Community Name</label>
+                                    <input
                                         type="text"
+                                        className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
                                         placeholder="Enter community name"
-                                        isInvalid={!!errors.name}
-                                        {...register('name', {
-                                            required: 'Community name is required',
-                                            minLength: {
-                                                value: 1,
-                                                message: 'Community name cannot be empty',
-                                            },
-                                            maxLength: {
-                                                value: 100,
-                                                message: 'Community name must be less than 100 characters',
-                                            },
-                                        })}
+                                        value={form.name}
+                                        onChange={(e) => setForm({ ...form, name: e.target.value })}
                                     />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.name?.message}
-                                    </Form.Control.Feedback>
-                                </Form.Group>
-
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Description</Form.Label>
-                                    <Form.Control
-                                        as="textarea"
-                                        rows={4}
-                                        placeholder="Describe your community..."
-                                        isInvalid={!!errors.description}
-                                        {...register('description', {
-                                            required: 'Description is required',
-                                            minLength: {
-                                                value: 1,
-                                                message: 'Description cannot be empty',
-                                            },
-                                            maxLength: {
-                                                value: 500,
-                                                message: 'Description must be less than 500 characters',
-                                            },
-                                        })}
-                                    />
-                                    <Form.Control.Feedback type="invalid">
-                                        {errors.description?.message}
-                                    </Form.Control.Feedback>
-                                    <Form.Text className="text-muted">
-                                        Help others understand what your community is about
-                                    </Form.Text>
-                                </Form.Group>
-
-                                <div className="d-flex justify-content-between">
-                                    <Button
-                                        variant="outline-secondary"
-                                        onClick={() => navigate(-1)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        disabled={isLoading}
-                                    >
-                                        {isLoading ? 'Creating...' : 'Create Community'}
-                                    </Button>
+                                    {formErrors.name && (
+                                        <div className="invalid-feedback">{formErrors.name}</div>
+                                    )}
                                 </div>
-                            </Form>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Description</label>
+                                    <textarea
+                                        rows={4}
+                                        className={`form-control ${formErrors.description ? 'is-invalid' : ''}`}
+                                        placeholder="Describe your community..."
+                                        value={form.description}
+                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                    />
+                                    {formErrors.description && (
+                                        <div className="invalid-feedback">{formErrors.description}</div>
+                                    )}
+                                    <div className="form-text">Help others understand what your community is about</div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className="form-check">
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            checked={form.isPrivate}
+                                            onChange={(e) => setForm({ ...form, isPrivate: e.target.checked })}
+                                            id="isPrivateCheck"
+                                        />
+                                        <label className="form-check-label" htmlFor="isPrivateCheck">
+                                            Make this a private community (requires invite link to join)
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {inviteLink ? (
+                                    <div className="mb-3">
+                                        <div className="alert alert-success" role="alert">
+                                            <h6 className="alert-heading">Invite Link Generated!</h6>
+                                            <p>Share this link with people you want to invite to your community:</p>
+                                            <div className="input-group mb-2">
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={inviteLink}
+                                                    readOnly
+                                                />
+                                                <button
+                                                    className="btn btn-outline-secondary"
+                                                    type="button"
+                                                    onClick={copyInviteLink}
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                            <button className="btn btn-primary w-100" onClick={handleContinue}>
+                                                Continue to Communities
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="d-flex justify-content-between">
+                                        <button type="button" className="btn btn-outline-secondary" onClick={() => navigate(-1)}>
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="btn btn-primary" disabled={isLoading}>
+                                            {isLoading ? 'Creating...' : 'Create Community'}
+                                        </button>
+                                    </div>
+                                )}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
 
