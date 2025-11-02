@@ -29,7 +29,6 @@ const CreateCommunityPage: React.FC = () => {
 
         try {
             const response = await communitiesAPI.create(form)
-            window.alert('Community created successfully!')
 
             // If private community, show invite link
             if (form.isPrivate && response.data.community) {
@@ -49,7 +48,6 @@ const CreateCommunityPage: React.FC = () => {
     const copyInviteLink = () => {
         if (inviteLink) {
             navigator.clipboard.writeText(inviteLink)
-            window.alert('Invite link copied to clipboard!')
         }
     }
 

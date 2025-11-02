@@ -19,6 +19,7 @@ const CommunityDetailPage: React.FC = () => {
     const [showManageMembersModal, setShowManageMembersModal] = useState(false)
     const [showDeleteCommunityModal, setShowDeleteCommunityModal] = useState(false)
     const [showDeleteDiscussionModal, setShowDeleteDiscussionModal] = useState(false)
+    const [showLeaveCommunityModal, setShowLeaveCommunityModal] = useState(false)
     const [editingDescription, setEditingDescription] = useState('')
     const [selectedDiscussionId, setSelectedDiscussionId] = useState<string | null>(null)
     const [allUsers, setAllUsers] = useState<any[]>([])
@@ -104,7 +105,6 @@ const CommunityDetailPage: React.FC = () => {
 
 
     const handleJoinSuccess = () => {
-        window.alert('Welcome to the community!')
         // Refresh community data
         if (id) {
             setIsLoading(true)
@@ -122,18 +122,17 @@ const CommunityDetailPage: React.FC = () => {
     const handleLeaveCommunity = async () => {
         if (!id) return
 
-        const confirmLeave = window.confirm('Are you sure you want to leave this community?')
-        if (!confirmLeave) return
-
         try {
             await communitiesAPI.leave(id)
             setSuccessMessage('You have left the community successfully!')
+            setShowLeaveCommunityModal(false)
             // Refresh community data
             const response = await communitiesAPI.getById(id)
             setCommunity(response.data)
             setTimeout(() => setSuccessMessage(null), 3000)
         } catch (err: any) {
             setErrorMessage(err.response?.data?.error || err.response?.data?.message || 'Failed to leave community')
+            setShowLeaveCommunityModal(false)
             setTimeout(() => setErrorMessage(null), 3000)
         }
     }
@@ -141,7 +140,6 @@ const CommunityDetailPage: React.FC = () => {
     const copyInviteLink = () => {
         if (inviteLink) {
             navigator.clipboard.writeText(inviteLink)
-            window.alert('Invite link copied to clipboard!')
         }
     }
 
@@ -190,7 +188,7 @@ const CommunityDetailPage: React.FC = () => {
             setSuccessMessage('Community deleted successfully!')
             setTimeout(() => {
                 navigate('/communities')
-            }, 1500)
+            }, 1000)
         } catch (err: any) {
             setErrorMessage(err.response?.data?.error || err.response?.data?.message || 'Failed to delete community')
             setTimeout(() => setErrorMessage(null), 3000)
@@ -292,7 +290,7 @@ const CommunityDetailPage: React.FC = () => {
                                         />
                                     )}
                                     {isMember && !isCreator && (
-                                        <button className="btn btn-outline-danger" onClick={handleLeaveCommunity}>
+                                        <button className="btn btn-outline-danger" onClick={() => setShowLeaveCommunityModal(true)}>
                                             Leave Community
                                         </button>
                                     )}
@@ -622,6 +620,31 @@ const CommunityDetailPage: React.FC = () => {
                                 </button>
                                 <button type="button" className="btn btn-danger" onClick={handleDeleteDiscussion}>
                                     Delete Discussion
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Leave Community Confirmation Modal */}
+            {showLeaveCommunityModal && (
+                <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Leave Community</h5>
+                                <button type="button" className="btn-close" onClick={() => setShowLeaveCommunityModal(false)}></button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Are you sure you want to leave this community? You will lose access to all discussions and content.</p>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowLeaveCommunityModal(false)}>
+                                    Cancel
+                                </button>
+                                <button type="button" className="btn btn-danger" onClick={handleLeaveCommunity}>
+                                    Leave Community
                                 </button>
                             </div>
                         </div>

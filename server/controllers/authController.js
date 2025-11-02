@@ -75,6 +75,7 @@ exports.login = async (req, res, next) => {
 
 exports.me = async (req, res, next) => {
     try {
+        // console.log("req.user.id", req.user.id)
         const user = await User.findById(req.user.id).select('-password');
         if (!user) {
             const err = new Error('User not found');

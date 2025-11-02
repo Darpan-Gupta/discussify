@@ -27,7 +27,6 @@ const CreateDiscussion: React.FC = () => {
         if (Object.keys(errs).length > 0) return
 
         if (!id) {
-            window.alert('Community ID is missing')
             return
         }
 
@@ -37,18 +36,12 @@ const CreateDiscussion: React.FC = () => {
                 ...form,
                 communityId: id
             })
-            window.alert('Discussion created successfully!')
             // Refresh notifications for community members
             refreshNotifications()
             navigate(`/discussion/${res.data._id}`)
         } catch (error: any) {
             console.error('Error creating discussion:', error)
-            const errorMessage = error.response?.data?.message ||
-                error.response?.data?.error ||
-                error.response?.data?.errors?.[0]?.msg ||
-                error.message ||
-                'Failed to create discussion'
-            window.alert(errorMessage)
+            // Error handled silently
         } finally {
             setIsLoading(false)
         }

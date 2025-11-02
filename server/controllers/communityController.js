@@ -204,7 +204,7 @@ exports.getInviteLink = async (req, res, next) => {
         }
 
         // Use client URL from environment variable
-        const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
         const inviteLink = `${clientUrl}/communities/${id}?token=${community.inviteToken}`;
 
         res.json({ inviteLink });
@@ -405,15 +405,14 @@ exports.deleteCommunity = async (req, res, next) => {
             throw err;
         }
 
-        // Mark community as inactive (soft delete)
-        community.isActive = false;
-        await community.save();
-
         // Remove community from all members' communities list
         await User.updateMany(
             { communities: id },
             { $pull: { communities: id } }
         );
+
+        // Delete the community from the database
+        await Community.findByIdAndDelete(id);
 
         res.json({
             message: 'Community deleted successfully'

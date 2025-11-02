@@ -90,7 +90,7 @@ const DiscussionDetail: React.FC = () => {
             refreshNotifications()
 
         } catch (err: any) {
-            window.alert(err.response?.data?.message || 'Failed to add comment')
+            // Error handled silently
         } finally {
             setIsLoading(false)
         }
@@ -107,7 +107,6 @@ const DiscussionDetail: React.FC = () => {
                 discussionId: id,
                 communityId: discussionData?.community?._id || discussionData?.community,
             })
-            window.alert('Resource shared successfully!')
             setResourceForm({ title: '', type: 'link', link: '', description: '' })
             setShowResourceForm(false)
 
@@ -118,7 +117,7 @@ const DiscussionDetail: React.FC = () => {
             // Refresh notifications for community members
             refreshNotifications()
         } catch (err: any) {
-            window.alert(err.response?.data?.message || err.response?.data?.error || 'Failed to share resource')
+            // Error handled silently
         } finally {
             setIsSubmittingResource(false)
         }

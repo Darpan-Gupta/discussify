@@ -4,7 +4,7 @@ const Community = require('../models/Community');
 
 exports.getNotifications = async (req, res, next) => {
     try {
-        // const { limit = 20, page = 1 } = req.query;
+        const { limit = 20, page = 1 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const notifications = await Notification.find({ user: req.user.id })

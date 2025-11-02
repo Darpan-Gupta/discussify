@@ -48,7 +48,6 @@ const ProfilePage: React.FC = () => {
 
         try {
             await profileAPI.update(form)
-            window.alert('Profile updated successfully!')
         } catch (err: any) {
             const message = err.response?.data?.error || 'Failed to update profile'
             setError(message)
@@ -63,25 +62,21 @@ const ProfilePage: React.FC = () => {
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            window.alert('Please select an image file')
             return
         }
 
         // Validate file size (2MB)
         if (file.size > 2 * 1024 * 1024) {
-            window.alert('File size must be less than 2MB')
             return
         }
 
         setIsUploading(true)
         try {
             await profileAPI.uploadPicture(file)
-            window.alert('Profile picture uploaded successfully!')
             // Refresh user data
             window.location.reload()
         } catch (err: any) {
-            const message = err.response?.data?.error || 'Failed to upload picture'
-            window.alert(message)
+            // Error handled silently
         } finally {
             setIsUploading(false)
         }

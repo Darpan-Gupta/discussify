@@ -20,13 +20,11 @@ const JoinCommunityButton: React.FC<JoinCommunityButtonProps> = ({
         setIsLoading(true)
         try {
             await communitiesAPI.join(communityId, inviteToken)
-            window.alert('Joined community successfully!')
             if (onJoin) {
                 onJoin()
             }
         } catch (error: any) {
-            const message = error.response?.data?.error || 'Failed to join community'
-            window.alert(message)
+            // Error handled silently
         } finally {
             setIsLoading(false)
         }

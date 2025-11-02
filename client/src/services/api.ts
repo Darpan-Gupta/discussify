@@ -80,6 +80,7 @@ export const communitiesAPI = {
     getMyCommunities: () => api.get('/communities/my'),
     getById: (id: string) => api.get(`/communities/${id}`),
     join: (id: string, inviteToken?: string) => api.post(`/communities/${id}/join`, { inviteToken }),
+    leave: (id: string) => api.post(`/communities/${id}/leave`),
     getInviteLink: (id: string) => api.get(`/communities/${id}/invite`),
     updateDescription: (id: string, description: string) => api.put(`/communities/${id}/description`, { description }),
     manageMembers: (id: string, action: 'add' | 'remove', userId: string) => api.put(`/communities/${id}/members`, { action, userId }),

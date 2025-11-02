@@ -1,6 +1,6 @@
 {
     "name": "@hey-its-me/discussify",
-    "version": "1.0.1",
+    "version": "1.0.4",
     "description": "A full-stack MERN discussion platform",
     "main": "index.js",
     "scripts": {
